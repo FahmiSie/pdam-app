@@ -1,47 +1,61 @@
 "use client";
 
+import { setCookie } from "cookies-next";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
-export default function SignUpPage() {
+export default function SignInPage() {
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
-  const [name, setName] = useState<string>("");
-  const [phone, setPhone] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  async function handleSignUp(e: React.FormEvent) {
+  async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
+    setIsLoading(true);
     try {
-      const request = JSON.stringify({
-        username,
-        password,
-        name,
-        phone,
-      });
-      const url = `${process.env.NEXT_PUBLIC_BASE_API_URL}/admins`;
-      const response = await fetch(url, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_API_URL}/auth`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "app-key": `${process.env.NEXT_PUBLIC_APP_KEY}`,
         },
-        body: request,
+        body: JSON.stringify({
+          username,
+          password,
+        }),
       });
+
+      const responseData = await response.json();
+      console.log("Full response data:", responseData);
+
       if (!response.ok) {
-        alert("Gagal melakukan registrasi");
+        alert(`Gagal login: ${responseData.message || "Username atau password salah"}`);
         return;
       }
-      const responseData = await response.json();
-      alert(responseData.message);
+
+      // Set cookie dengan token dari response
+      const token = responseData.token || responseData.data?.token;
+      setCookie("accessToken", token, {
+        maxAge: 60 * 60 * 24, // 1 day
+      });
+
+      alert(responseData.message || "Login berhasil!");
+      if (responseData.role === "ADMIN") {
+        window.location.href = "/admin-dashboard";
+      } else if (responseData.role === "CUST") {
+        window.location.href = "/cust-dashboard";
+      }
     } catch (error) {
-      console.log("error during sign up :", error);
+      console.log("error during sign in:", error);
+      alert("Terjadi kesalahan saat login: " + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setIsLoading(false);
     }
   }
 
   return (
     <div className="w-full min-h-screen flex" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-      {/* Left Side - Image */}
       <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-8">
         <div className="relative w-full max-w-md">
           <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-red-600 rounded-3xl transform rotate-6"></div>
@@ -54,7 +68,7 @@ export default function SignUpPage() {
             <div className="h-96 flex items-end justify-center">
               <div className="text-center text-white">
                 <div className="w-32 h-32 mx-auto mb-4 bg-white bg-opacity-10 rounded-full"></div>
-                <p className="text-sm opacity-80">Create your account</p>
+                <p className="text-sm opacity-80">Welcome Back!</p>
               </div>
             </div>
           </div>
@@ -65,13 +79,13 @@ export default function SignUpPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">Sign up</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Sign In</h1>
             <p className="text-sm text-gray-500">
-              Don't have an account? <span className="text-blue-600 font-semibold cursor-pointer">Create an Account</span>
+              Don't have an account? <a href="/sign-up" className="text-blue-600 font-semibold cursor-pointer hover:underline">Create an Account</a>
             </p>
           </div>
 
-          <div className="space-y-4">
+          <form onSubmit={handleSignIn} className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
                 Username
@@ -82,34 +96,6 @@ export default function SignUpPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter your username"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-800"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name
-              </label>
-              <input
-                type="text"
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your full name"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-800"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                id="phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Enter your phone number"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-800"
               />
             </div>
@@ -142,21 +128,22 @@ export default function SignUpPage() {
             <div className="flex items-center">
               <input
                 type="checkbox"
-                id="terms"
+                id="remember"
                 className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
               />
-              <label htmlFor="terms" className="ml-2 text-sm text-gray-600">
-                I agree to the <span className="text-purple-600 font-semibold">Terms & Conditions</span>
+              <label htmlFor="remember" className="ml-2 text-sm text-gray-600">
+                Remember me
               </label>
             </div>
 
             <button
-              onClick={handleSignUp}
-              className="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition duration-200"
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign up
+              {isLoading ? "Signing in..." : "Sign In"}
             </button>
-          </div>
+          </form>
 
           <div className="mt-6">
             <div className="relative">

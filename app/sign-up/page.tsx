@@ -34,6 +34,7 @@ export default function SignUpPage() {
       }
       const responseData = await response.json();
       alert(responseData.message);
+      window.location.href = "/sign-in";
     } catch (error) {
       console.log("error during sign up :", error);
     }

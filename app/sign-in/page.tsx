@@ -3,6 +3,7 @@
 import { setCookie } from "cookies-next";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { storeCookie } from "@/app/lib/client-cookie";
 
 export default function SignInPage() {
   const [username, setUsername] = useState<string>("");
@@ -42,9 +43,9 @@ export default function SignInPage() {
 
       alert(responseData.message || "Login berhasil!");
       if (responseData.role === "ADMIN") {
-        window.location.href = "/admin-dashboard";
-      } else if (responseData.role === "CUST") {
-        window.location.href = "/cust-dashboard";
+        window.location.href = "/admin/dashboard";
+      } else if (responseData.role === "CUSTOMER") {
+        window.location.href = "/cust/dashboard";
       }
     } catch (error) {
       console.log("error during sign in:", error);
@@ -96,7 +97,7 @@ export default function SignInPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter your username"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-800"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
               />
             </div>
 
@@ -113,7 +114,7 @@ export default function SignInPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-800"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800"
                 />
                 <button
                   type="button"
@@ -129,7 +130,7 @@ export default function SignInPage() {
               <input
                 type="checkbox"
                 id="remember"
-                className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
               <label htmlFor="remember" className="ml-2 text-sm text-gray-600">
                 Remember me

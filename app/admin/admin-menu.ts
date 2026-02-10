@@ -18,12 +18,12 @@ export const items = [
     },
     {
         title: "Customer Data",
-        href: "#",
+        href: "admin/customer",
         icon: Users,
     },
     {
         title: "Services",
-        href: "#",
+        href: "admin/services",
         icon: Toolbox,
     },
     {

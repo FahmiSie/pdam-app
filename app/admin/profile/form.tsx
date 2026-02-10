@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Admin } from "../types";
+import { Admin } from "../../types";
 
 type Props = {
   admin: Admin;

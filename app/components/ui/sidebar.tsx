@@ -21,44 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/app/components/ui/tooltip"
-import { // ...existing code...
-
-// Around line 401
-<Slot
-  // ...existing props...
->
-  // ...existing content...
-</Slot>
-
-// Around line 421
-<Slot
-  // ...existing props...
->
-  // ...existing content...
-</Slot>
-
-// Around line 506
-<Slot
-  // ...existing props...
->
-  // ...existing content...
-</Slot>
-
-// Around line 552
-<Slot
-  // ...existing props...
->
-  // ...existing content...
-</Slot>
-
-// Around line 660
-<Slot
-  // ...existing props...
->
-  // ...existing content...
-</Slot>
-
-// ...existing code...useIsMobile } from "@/app/hooks/use-mobile"
+import { useIsMobile } from "@/app/hooks/use-mobile"
 import { PanelLeftIcon } from "lucide-react"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
@@ -434,7 +397,7 @@ function SidebarGroupLabel({
   asChild = false,
   ...props
 }: React.ComponentProps<"div"> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot.Root : "div"
+  const Comp = asChild ? Slot : "div"
 
   return (
     <Comp
@@ -454,7 +417,7 @@ function SidebarGroupAction({
   asChild = false,
   ...props
 }: React.ComponentProps<"button"> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot.Root : "button"
+  const Comp = asChild ? Slot : "button"
 
   return (
     <Comp
@@ -539,7 +502,7 @@ function SidebarMenuButton({
   isActive?: boolean
   tooltip?: string | React.ComponentProps<typeof TooltipContent>
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
-  const Comp = asChild ? Slot.Root : "button"
+  const Comp = asChild ? Slot : "button"
   const { isMobile, state } = useSidebar()
 
   const button = (
@@ -585,7 +548,7 @@ function SidebarMenuAction({
   asChild?: boolean
   showOnHover?: boolean
 }) {
-  const Comp = asChild ? Slot.Root : "button"
+  const Comp = asChild ? Slot : "button"
 
   return (
     <Comp
@@ -693,7 +656,7 @@ function SidebarMenuSubButton({
   size?: "sm" | "md"
   isActive?: boolean
 }) {
-  const Comp = asChild ? Slot.Root : "a"
+  const Comp = asChild ? Slot : "a"
 
   return (
     <Comp

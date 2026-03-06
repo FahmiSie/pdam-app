@@ -8,8 +8,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/app/components/ui/sidebar"
-import { items } from "@/app/admin/admin-menu"
+} from "@/components/ui/sidebar"
+import { items } from "@/admin/admin-menu"
 import Link from "next/link"
 
 

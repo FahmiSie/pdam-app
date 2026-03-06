@@ -1,4 +1,4 @@
-import { getCookie } from "@/app/lib/server-cookie";
+import { getCookie } from "@/lib/server-cookie";
 import { CustomerDashboardContent } from "./customer-dashboard-content";
 
 export const dynamic = 'force-dynamic';

@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/app/components/ui/dialog";
+} from "@/components/ui/dialog";
 import { Field, FieldGroup } from "../../components/ui/field";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
@@ -24,10 +24,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/app/components/ui/select";
+} from "@/components/ui/select";
 import { Pencil } from "lucide-react";
-import type { Customer } from "@/app/types/customer";
-import type { Services } from "@/app/types/services";
+import type { Customer } from "@/types/customer";
+import type { Services } from "@/types/services";
 
 interface EditCustomerProps {
   customer: Customer;
@@ -82,11 +82,24 @@ const EditCustomer = ({ customer }: EditCustomerProps) => {
     setIsLoading(true);
     const token = Cookies.get("accessToken");
 
+    // Debugging
+    console.log("Updating customer:", {
+      id: customer.id,
+      endpoint: `${process.env.NEXT_PUBLIC_BASE_API_URL}/customers/${customer.id}`,
+      data: {
+        name,
+        customer_number: customerNumber,
+        phone,
+        address,
+        service_id: parseInt(serviceId),
+      }
+    });
+
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/customer/${customer.id}`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/customers/${customer.id}`,
         {
-          method: "PUT",
+          method: "PATCH", // Coba PATCH dulu, jika tidak work ganti PUT
           headers: {
             "Content-Type": "application/json",
             "APP-KEY": `${process.env.NEXT_PUBLIC_APP_KEY || ""}`,
@@ -102,7 +115,9 @@ const EditCustomer = ({ customer }: EditCustomerProps) => {
         }
       );
 
+      console.log("Response status:", response.status);
       const result = await response.json();
+      console.log("Response data:", result);
 
       if (response.ok) {
         setIsShowing(false);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Services } from "@/types/services";  
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -14,8 +15,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/app/components/ui/alert-dialog";
-import { Button } from "@/app/components/ui/button";
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 
 interface DeleteServicesProps {

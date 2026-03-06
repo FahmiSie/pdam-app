@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/app/components/ui/dialog";
+} from "@/components/ui/dialog";
 import { Field, FieldGroup } from "../../components/ui/field";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
@@ -87,7 +87,7 @@ const AddServices = () => {
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Add New Service</DialogTitle>
+            <DialogTitle>Edit New Service</DialogTitle>
             <DialogDescription>
               Fill in the details below to create a new service package.
             </DialogDescription>

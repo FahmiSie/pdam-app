@@ -8,22 +8,22 @@ export const items = [
     },
     {
         title: "My Profile",
-        href: "#",
+        href: "/admin/profile",
         icon: UserPen,
     },
     {
         title: "Admin Data",
-        href: "#",
+        href: "/admin/admin-data",
         icon: User,
     },
     {
         title: "Customer Data",
-        href: "admin/customer",
+        href: "/admin/customer",
         icon: Users,
     },
     {
         title: "Services",
-        href: "admin/services",
+        href: "/admin/services",
         icon: Toolbox,
     },
     {

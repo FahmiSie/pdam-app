@@ -13,13 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/app/components/ui/dialog";
+} from "@/components/ui/dialog";
 import { Field, FieldGroup } from "../../components/ui/field";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Button } from "../../components/ui/button";
 import { Pencil } from "lucide-react";
-import type { Services } from "@/app/types/services";
+import type { Services } from "@/types/services";
 
 interface EditServicesProps {
   service: Services;
@@ -40,11 +40,23 @@ const EditServices = ({ service }: EditServicesProps) => {
     setIsLoading(true);
     const token = Cookies.get("accessToken");
 
+    // Debugging
+    console.log("Updating service:", {
+      id: service.id,
+      endpoint: `${process.env.NEXT_PUBLIC_BASE_API_URL}/services/${service.id}`,
+      data: {
+        name,
+        min_usage: minUsage,
+        max_usage: maxUsage,
+        price,
+      }
+    });
+
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_API_URL}/services/${service.id}`,
         {
-          method: "PUT",
+          method: "PATCH", // Coba PATCH dulu
           headers: {
             "Content-Type": "application/json",
             "APP-KEY": `${process.env.NEXT_PUBLIC_APP_KEY || ""}`,
@@ -59,7 +71,9 @@ const EditServices = ({ service }: EditServicesProps) => {
         }
       );
 
+      console.log("Response status:", response.status);
       const result = await response.json();
+      console.log("Response data:", result);
 
       if (response.ok) {
         setIsShowing(false);
@@ -90,7 +104,7 @@ const EditServices = ({ service }: EditServicesProps) => {
           <DialogHeader>
             <DialogTitle>Edit Service</DialogTitle>
             <DialogDescription>
-              Update the service package details below.
+              Update service package details below.
             </DialogDescription>
           </DialogHeader>
 

@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/app/components/ui/dialog";
+} from "@/components/ui/dialog";
 import { Field, FieldGroup } from "../../components/ui/field";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
@@ -24,8 +24,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/app/components/ui/select";
-import type { Services } from "@/app/types/services";
+} from "@/components/ui/select";
+import type { Services } from "@/types/services";
 
 const AddCustomer = () => {
   const router = useRouter();
@@ -81,12 +81,16 @@ const AddCustomer = () => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    console.log("Form submitted!");
+    console.log("Form data:", { name, customerNumber, phone, address, username, password, serviceId });
+    
     setIsLoading(true);
     const token = Cookies.get("accessToken");
+    console.log("Token:", token ? "exists" : "missing");
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/customer`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/customers`,
         {
           method: "POST",
           headers: {
@@ -106,7 +110,9 @@ const AddCustomer = () => {
         }
       );
 
+      console.log("Response status:", response.status);
       const result = await response.json();
+      console.log("Response result:", result);
 
       if (response.ok) {
         setIsShowing(false);

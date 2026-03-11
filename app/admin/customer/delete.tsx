@@ -32,7 +32,7 @@ const DeleteCustomer = ({ customerId }: DeleteCustomerProps) => {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/customer/${customerId}`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/customers/${customerId}`,
         {
           method: "DELETE",
           headers: {

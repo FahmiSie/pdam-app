@@ -28,12 +28,12 @@ export const items = [
     },
     {
         title: "Bill",
-        href: "#",
+        href: "/admin/bill",
         icon: Receipt,
     },
     {
         title: "Payments",
-        href: "#",
+        href: "/admin/payments",
         icon: Banknote,
     },
 ]

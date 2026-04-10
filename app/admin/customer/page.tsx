@@ -120,7 +120,7 @@ export default function CustomerPage({ searchParams }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 p-6">
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
@@ -133,7 +133,7 @@ export default function CustomerPage({ searchParams }: Props) {
 
       {/* Stats Cards — ✅ pakai count bukan customers.length */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
+        <Card className="bg-linear-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-blue-100">Total Customers</CardTitle>
             <Users className="h-5 w-5 text-blue-100" />
@@ -144,7 +144,7 @@ export default function CustomerPage({ searchParams }: Props) {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
+        <Card className="bg-linear-to-br from-green-500 to-green-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-green-100">Active Customers</CardTitle>
             <UserCheck className="h-5 w-5 text-green-100" />
@@ -155,7 +155,7 @@ export default function CustomerPage({ searchParams }: Props) {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
+        <Card className="bg-linear-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-purple-100">Services Used</CardTitle>
             <MapPin className="h-5 w-5 text-purple-100" />
@@ -166,7 +166,7 @@ export default function CustomerPage({ searchParams }: Props) {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
+        <Card className="bg-linear-to-br from-orange-500 to-orange-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-orange-100">Total Contacts</CardTitle>
             <Phone className="h-5 w-5 text-orange-100" />
@@ -248,7 +248,7 @@ export default function CustomerPage({ searchParams }: Props) {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm shadow-md">
+                          <div className="h-10 w-10 rounded-full bg-linear-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm shadow-md">
                             {customer.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
@@ -270,8 +270,8 @@ export default function CustomerPage({ searchParams }: Props) {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-start gap-1 text-sm max-w-[200px]">
-                          <MapPin className="h-3 w-3 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <div className="flex items-start gap-1 text-sm max-w-50">
+                          <MapPin className="h-3 w-3 text-gray-400 mt-0.5 shrink-0" />
                           <span className="line-clamp-2">{customer.address}</span>
                         </div>
                       </TableCell>
@@ -312,7 +312,7 @@ export default function CustomerPage({ searchParams }: Props) {
       {/* Summary Footer */}
       {count > 0 && (
         <>
-          <Card className="mt-6 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 shadow-md">
+          <Card className="mt-6 bg-linear-to-r from-blue-50 to-purple-50 border-blue-200 shadow-md">
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
                 <div>

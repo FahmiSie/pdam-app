@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -58,7 +58,6 @@ function formatDate(dateStr: string): string {
   });
 }
 
-// ─── Add Admin Modal ──────────────────────────────────────────────────────────
 function AddAdmin({ onSuccess }: { onSuccess: () => void }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -145,7 +144,6 @@ function AddAdmin({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-// ─── Delete Admin Modal ───────────────────────────────────────────────────────
 function DeleteAdmin({ admin, onSuccess }: { admin: Admin; onSuccess: () => void }) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -202,8 +200,8 @@ function DeleteAdmin({ admin, onSuccess }: { admin: Admin; onSuccess: () => void
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-export default function AdminDataPage() {
+// ─── Komponen utama yang pakai useSearchParams ────────────────────────────────
+function AdminDataContent() {
   const searchParams = useSearchParams();
 
   const page = Number(searchParams.get("page")) || 1;
@@ -212,10 +210,8 @@ export default function AdminDataPage() {
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  // ✅ searchInput sebagai sumber kebenaran, bukan URL
   const [searchInput, setSearchInput] = useState("");
 
-  // ✅ fetchAdmins menerima parameter search langsung
   const fetchAdmins = useCallback(async (searchValue: string = "") => {
     setLoading(true);
     try {
@@ -241,12 +237,10 @@ export default function AdminDataPage() {
     }
   }, [page, quantity]);
 
-  // ✅ Fetch saat halaman pertama load atau page/quantity berubah
   useEffect(() => {
     fetchAdmins(searchInput);
   }, [page, quantity]);
 
-  // ✅ Debounce search — langsung fetch dengan nilai terbaru
   useEffect(() => {
     const timeout = setTimeout(() => {
       fetchAdmins(searchInput);
@@ -266,7 +260,6 @@ export default function AdminDataPage() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -290,7 +283,6 @@ export default function AdminDataPage() {
         </Card>
       </div>
 
-      {/* Table */}
       <Card className="shadow-lg">
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -390,7 +382,6 @@ export default function AdminDataPage() {
                   </TableBody>
                 </Table>
               </div>
-
               {count > 0 && (
                 <div className="mt-4 flex justify-center">
                   <SimplePagination count={count} perPage={quantity} currentPage={page} />
@@ -401,5 +392,14 @@ export default function AdminDataPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// ─── Page export — bungkus dengan Suspense ────────────────────────────────────
+export default function AdminDataPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>}>
+      <AdminDataContent />
+    </Suspense>
   );
 }

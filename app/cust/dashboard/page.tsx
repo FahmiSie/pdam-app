@@ -1,5 +1,5 @@
 import { getCookie } from "@/lib/server-cookie";
-import { CustomerDashboardContent } from "./customer-dashboard-content";
+import  CustomerDashboardContent  from "./customer-dashboard-content";
 
 export const dynamic = 'force-dynamic';
 
@@ -53,15 +53,5 @@ async function getCustomerProfile(): Promise<CustomerResponse['data'] | null> {
 }
 
 export default async function Page() {
-  let customerData = null;
-  let hasError = false;
-
-  try {
-    customerData = await getCustomerProfile();
-  } catch (error) {
-    console.error("Error fetching customer profile:", error);
-    hasError = true;
-  }
-
-  return <CustomerDashboardContent customerData={customerData} error={hasError} />;
+  return <CustomerDashboardContent />;
 }

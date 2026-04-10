@@ -155,7 +155,7 @@ export function AdminProfileContent({ adminData, dashboardStats, error }: AdminP
 
   if (error || !adminData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-linear-to-br from-blue-50 to-cyan-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full border border-blue-200">
           <div className="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mx-auto mb-4">
             <Droplets className="w-8 h-8 text-red-600" />
@@ -187,7 +187,7 @@ export function AdminProfileContent({ adminData, dashboardStats, error }: AdminP
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-cyan-50 to-teal-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-blue-100">
         <div className="px-4 sm:px-6 lg:px-8">

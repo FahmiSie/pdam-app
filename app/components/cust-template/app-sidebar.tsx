@@ -1,9 +1,6 @@
-"use client";
-
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -14,17 +11,6 @@ import {
 } from "@/components/ui/sidebar"
 import { items } from "@/admin/admin-menu"
 import Link from "next/link"
-import { toast } from "sonner";
-import Cookies from "js-cookie";
-import { LogOut } from "lucide-react";
-
-
-
- const handleLogout = () => {
-    Cookies.remove("accessToken");
-    toast.success("Berhasil logout");
-    window.location.href = "/sign-in";
-  };
 
 
 export function AppSidebar() {
@@ -67,15 +53,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-       <SidebarFooter className="border-t border-sidebar-border p-4">
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-4 py-2.5 rounded-lg text-red-500 hover:bg-red-50 transition-all duration-200"
-        >
-          <LogOut className="w-4 h-4" />
-          <span className="text-sm font-medium">Logout</span>
-        </button>
-      </SidebarFooter>
     </Sidebar>
   )
 }

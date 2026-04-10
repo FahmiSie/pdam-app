@@ -1,204 +1,349 @@
-'use client';
-import React from 'react';
+"use client";
 
-interface CustomerData {
+import { useState, useEffect } from "react";
+import Cookies from "js-cookie";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  FileText, CreditCard, CheckCircle, AlertCircle,
+  Droplets, User, Phone, MapPin, Calendar,
+} from "lucide-react";
+import Link from "next/link";
+
+interface CustomerProfile {
   id: number;
-  user_id: number;
-  customer_number: string;
   name: string;
+  customer_number: string;
   phone: string;
   address: string;
-  service_id: number;
-  owner_token: string;
   createdAt: string;
-  updatedAt: string;
-  user?: {
-    id: number;
-    username: string;
-    role: string;
-  };
-  service?: {
-    id: number;
+  user: { username: string; role: string; };
+  service: {
     name: string;
-    description?: string;
+    min_usage: number;
+    max_usage: number;
+    price: number;
   };
 }
 
-interface CustomerDashboardContentProps {
-  customerData: CustomerData | null;
-  error: boolean;
+interface Bill {
+  id: number;
+  month: number;
+  year: number;
+  usage_value: number;
+  price: number;
+  paid: boolean;
+  amount: number;
+  payments: { verified: boolean } | null;
 }
 
-export function CustomerDashboardContent({ customerData, error }: CustomerDashboardContentProps) {
-  if (error || !customerData) {
+interface Payment {
+  id: number;
+  verified: boolean;
+  total_amount: number;
+  payment_date: string;
+}
+
+const MONTH_NAMES = [
+  "", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+
+function getToken() { return Cookies.get("accessToken"); }
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency", currency: "IDR", minimumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("id-ID", {
+    day: "numeric", month: "long", year: "numeric",
+  });
+}
+
+export default function CustDashboardPage() {
+  const [profile, setProfile] = useState<CustomerProfile | null>(null);
+  const [bills, setBills] = useState<Bill[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAll = async () => {
+      const token = getToken();
+      const headers = {
+        "APP-KEY": process.env.NEXT_PUBLIC_APP_KEY ?? "",
+        Authorization: `Bearer ${token}`,
+      };
+
+      try {
+        const [profileRes, billsRes, paymentsRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_BASE_API_URL}/customers/me`, { headers }),
+          fetch(`${process.env.NEXT_PUBLIC_BASE_API_URL}/bills/customer?page=1&quantity=99999`, { headers }),
+          fetch(`${process.env.NEXT_PUBLIC_BASE_API_URL}/payments/customer?page=1&quantity=99999`, { headers }),
+        ]);
+
+        const [profileData, billsData, paymentsData] = await Promise.all([
+          profileRes.json(),
+          billsRes.json(),
+          paymentsRes.json(),
+        ]);
+
+        if (profileData.success) setProfile(profileData.data);
+        if (billsData.success) setBills(billsData.data);
+        if (paymentsData.success) setPayments(paymentsData.data);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAll();
+  }, []);
+
+  // Stats
+  const totalBills = bills.length;
+  const paidBills = bills.filter(b => b.paid).length;
+  const unpaidBills = bills.filter(b => !b.paid && !b.payments).length;
+  const pendingBills = bills.filter(b => !b.paid && b.payments).length;
+  const totalPayments = payments.length;
+  const verifiedPayments = payments.filter(p => p.verified).length;
+
+  // Tagihan terbaru yang belum dibayar
+  const unpaidBillsList = bills.filter(b => !b.paid).slice(0, 3);
+
+  // Pembayaran terbaru
+  const recentPayments = payments.slice(0, 3);
+
+  const initials = profile?.name?.slice(0, 2).toUpperCase() ?? "CU";
+
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full border border-slate-200">
-          <div className="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mx-auto mb-4">
-            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-slate-800 text-center mb-2">Error</h2>
-          <p className="text-slate-600 text-center">
-            Sorry, customer data could not be loaded.
-          </p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
       </div>
     );
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-teal-50 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header Card */}
-        <div className="bg-white rounded-3xl shadow-xl overflow-hidden mb-6 border border-slate-200">
-          <div className="bg-gradient-to-r from-blue-600 to-teal-600 px-8 py-12 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32"></div>
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-24 -mb-24"></div>
-                <div className="relative">
-                  <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-lg">
-                      <span className="text-3xl font-bold text-blue-600">
-                        {customerData.name.charAt(0).toUpperCase()}
-                      </span>
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 p-6">
+      {/* Welcome Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-4">
+          <div className="h-14 w-14 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xl font-bold shadow-lg">
+            {initials}
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Selamat datang, {profile?.name ?? "Customer"}!
+            </h1>
+            <p className="text-gray-500 mt-0.5">
+              No. Pelanggan: <span className="font-mono font-semibold">{profile?.customer_number ?? "-"}</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card className="bg-linear-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-blue-100">Total Tagihan</CardTitle>
+            <FileText className="h-5 w-5 text-blue-100" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{totalBills}</div>
+            <p className="text-xs text-blue-100 mt-1">{paidBills} sudah lunas</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-linear-to-br from-red-500 to-red-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-red-100">Belum Dibayar</CardTitle>
+            <AlertCircle className="h-5 w-5 text-red-100" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{unpaidBills}</div>
+            <p className="text-xs text-red-100 mt-1">Perlu segera dibayar</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-linear-to-br from-yellow-500 to-yellow-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-yellow-100">Menunggu Verifikasi</CardTitle>
+            <CreditCard className="h-5 w-5 text-yellow-100" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{pendingBills}</div>
+            <p className="text-xs text-yellow-100 mt-1">Sedang diproses</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-linear-to-br from-green-500 to-green-600 text-white border-0 shadow-lg hover:shadow-xl transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-green-100">Pembayaran Terverifikasi</CardTitle>
+            <CheckCircle className="h-5 w-5 text-green-100" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{verifiedPayments}</div>
+            <p className="text-xs text-green-100 mt-1">dari {totalPayments} transaksi</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Info Akun */}
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <User className="w-4 h-4 text-blue-500" />
+              Informasi Akun
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center gap-3">
+              <User className="w-4 h-4 text-gray-400 shrink-0" />
+              <div>
+                <p className="text-xs text-gray-400">Nama</p>
+                <p className="text-sm font-semibold">{profile?.name ?? "-"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Phone className="w-4 h-4 text-gray-400 shrink-0" />
+              <div>
+                <p className="text-xs text-gray-400">Telepon</p>
+                <p className="text-sm font-semibold">{profile?.phone ?? "-"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
+              <div>
+                <p className="text-xs text-gray-400">Alamat</p>
+                <p className="text-sm font-semibold">{profile?.address ?? "-"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
+              <div>
+                <p className="text-xs text-gray-400">Terdaftar</p>
+                <p className="text-sm font-semibold">{profile ? formatDate(profile.createdAt) : "-"}</p>
+              </div>
+            </div>
+            {/* Paket Layanan */}
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <Droplets className="w-4 h-4 text-blue-500" />
+                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Paket Layanan</p>
+              </div>
+              <p className="text-sm font-bold text-blue-800">{profile?.service?.name ?? "-"}</p>
+              <p className="text-xs text-blue-600">
+                {profile?.service?.min_usage}-{profile?.service?.max_usage} m³ / bulan
+              </p>
+              <p className="text-sm font-semibold text-blue-700 mt-1">
+                {profile?.service ? formatCurrency(profile.service.price) : "-"}
+              </p>
+            </div>
+
+            <Link href="/cust/profile">
+              <button className="w-full mt-2 text-xs text-blue-600 hover:text-blue-800 underline text-center">
+                Edit Profil →
+              </button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        {/* Tagihan Belum Dibayar */}
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-500" />
+                Tagihan Belum Dibayar
+              </CardTitle>
+              <Link href="/cust/bills">
+                <span className="text-xs text-blue-600 hover:underline">Lihat semua →</span>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {unpaidBillsList.length === 0 ? (
+              <div className="text-center py-8">
+                <CheckCircle className="mx-auto h-10 w-10 text-green-400" />
+                <p className="mt-3 text-sm font-medium text-gray-700">Semua tagihan sudah dibayar!</p>
+                <p className="text-xs text-gray-400 mt-1">Tidak ada tagihan yang tertunggak</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {unpaidBillsList.map((bill) => (
+                  <div key={bill.id} className="p-3 border border-red-100 rounded-lg bg-red-50">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {MONTH_NAMES[bill.month]} {bill.year}
+                        </p>
+                        <p className="text-xs text-gray-500">Pemakaian: {bill.usage_value} m³</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-red-600">{formatCurrency(bill.amount)}</p>
+                        {bill.payments ? (
+                          <Badge className="text-xs bg-yellow-100 text-yellow-700 border-yellow-300">Menunggu</Badge>
+                        ) : (
+                          <Badge className="text-xs bg-red-100 text-red-600 border-red-200">Belum Bayar</Badge>
+                        )}
+                      </div>
                     </div>
-                  <div>
-                    <h1 className="text-3xl font-bold text-white mb-1">{customerData.name}</h1>
-                  <div className="flex items-center space-x-2">
-                    <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm text-white font-medium">
-                      Customer
-                    </span>
-                    <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm text-white font-mono">
-                      #{customerData.customer_number}
-                    </span>
                   </div>
-                </div>
+                ))}
+                <Link href="/cust/bills">
+                  <button className="w-full mt-2 py-2 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Bayar Sekarang
+                  </button>
+                </Link>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Info Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {/* Personal Information */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200 hover:shadow-xl transition-shadow duration-300">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-semibold text-slate-800">Personal Information</h2>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-slate-500 block mb-1">Full Name</label>
-                <p className="text-slate-800 font-medium">{customerData.name}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-500 block mb-1">Customer Number</label>
-                <p className="text-slate-800 font-mono text-sm">{customerData.customer_number}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-500 block mb-1">Customer ID</label>
-                <p className="text-slate-800 font-mono text-sm">{customerData.id}</p>
-              </div>
-              {customerData.user && (
-                <div>
-                  <label className="text-sm font-medium text-slate-500 block mb-1">Username</label>
-                  <p className="text-slate-800 font-medium">{customerData.user.username}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Contact Information */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200 hover:shadow-xl transition-shadow duration-300">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-semibold text-slate-800">Contact Information</h2>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-slate-500 block mb-1">Phone Number</label>
-                <p className="text-slate-800 font-medium">{customerData.phone}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-500 block mb-1">Address</label>
-                <p className="text-slate-800 font-medium leading-relaxed">{customerData.address}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Service Information */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200 hover:shadow-xl transition-shadow duration-300 mb-6">
-          <div className="flex items-center space-x-3 mb-6">
-            <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
-              <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-semibold text-slate-800">Service Information</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 bg-slate-50 rounded-xl">
-              <label className="text-sm font-medium text-slate-500 block mb-1">Service ID</label>
-              <p className="text-slate-800 font-mono text-sm">{customerData.service_id}</p>
-            </div>
-            {customerData.service && (
-              <>
-                <div className="p-4 bg-slate-50 rounded-xl">
-                  <label className="text-sm font-medium text-slate-500 block mb-1">Service Name</label>
-                  <p className="text-slate-800 font-medium">{customerData.service.name}</p>
-                </div>
-                {customerData.service.description && (
-                  <div className="p-4 bg-slate-50 rounded-xl md:col-span-2">
-                    <label className="text-sm font-medium text-slate-500 block mb-1">Description</label>
-                    <p className="text-slate-800">{customerData.service.description}</p>
-                  </div>
-                )}
-              </>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        {/* Account Activity */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-slate-200 hover:shadow-xl transition-shadow duration-300">
-          <div className="flex items-center space-x-3 mb-6">
-            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-              <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+        {/* Riwayat Pembayaran Terbaru */}
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-green-500" />
+                Pembayaran Terbaru
+              </CardTitle>
+              <Link href="/cust/payments">
+                <span className="text-xs text-blue-600 hover:underline">Lihat semua →</span>
+              </Link>
             </div>
-            <h2 className="text-xl font-semibold text-slate-800">Account Activity</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 bg-slate-50 rounded-xl">
-              <label className="text-sm font-medium text-slate-500 block mb-1">Account Created</label>
-              <p className="text-slate-800 font-medium text-sm">{formatDate(customerData.createdAt)}</p>
-            </div>
-            <div className="p-4 bg-slate-50 rounded-xl">
-              <label className="text-sm font-medium text-slate-500 block mb-1">Last Updated</label>
-              <p className="text-slate-800 font-medium text-sm">{formatDate(customerData.updatedAt)}</p>
-            </div>
-          </div>
-        </div>
+          </CardHeader>
+          <CardContent>
+            {recentPayments.length === 0 ? (
+              <div className="text-center py-8">
+                <CreditCard className="mx-auto h-10 w-10 text-gray-300" />
+                <p className="mt-3 text-sm text-gray-500">Belum ada riwayat pembayaran</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentPayments.map((payment) => (
+                  <div key={payment.id} className="p-3 border border-gray-100 rounded-lg bg-gray-50 flex justify-between items-center">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">{formatCurrency(payment.total_amount)}</p>
+                      <p className="text-xs text-gray-400">{formatDate(payment.payment_date)}</p>
+                    </div>
+                    {payment.verified ? (
+                      <Badge className="bg-green-100 text-green-700 border-green-300 text-xs">Terverifikasi</Badge>
+                    ) : (
+                      <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300 text-xs">Menunggu</Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

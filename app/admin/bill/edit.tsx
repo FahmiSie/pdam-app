@@ -21,14 +21,45 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Pencil } from "lucide-react";
 
-import type { Bills } from "@/types/bills";
+interface Service {
+  id: number;
+  name: string;
+  min_usage: number;
+  max_usage: number;
+  price: number;
+}
 
-const EditBillPage = ({ bill }: { bill: Bills }) => {
+interface Customer {
+  id: number;
+  name: string;
+  customer_number: string;
+}
+
+interface Bill {
+  id: number;
+  customer_id: number;
+  admin_id: number;
+  service_id: number;
+  month: number;
+  year: number;
+  usage_value: number;
+  price: number;
+  measurement_number: string;
+  paid: boolean;
+  owner_token: string;
+  createdAt: string;
+  updatedAt: string;
+  service: Service;
+  customer: Customer;
+  admin: { id: number; name: string; };
+}
+
+const EditBillPage = ({ bill }: { bill: Bill }) => {
   const router = useRouter();
 
   const [isShowing, setIsShowing] = useState(false);
-  const [price, setPrice] = useState(bill.price);
   const [usage, setUsage] = useState(bill.usage_value);
+  const [measurement, setMeasurement] = useState(bill.measurement_number);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -48,8 +79,8 @@ const EditBillPage = ({ bill }: { bill: Bills }) => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            price,
             usage_value: usage,
+            measurement_number: measurement,
           }),
         }
       );
@@ -57,14 +88,14 @@ const EditBillPage = ({ bill }: { bill: Bills }) => {
       const result = await response.json();
 
       if (response.ok) {
-        toast.success(result.message || "Bill updated");
+        toast.success(result.message || "Tagihan berhasil diperbarui");
         setIsShowing(false);
         router.refresh();
       } else {
-        toast.warning(result.message);
+        toast.warning(result.message || "Gagal memperbarui tagihan");
       }
     } catch {
-      toast.error("Error updating bill");
+      toast.error("Terjadi kesalahan");
     } finally {
       setIsLoading(false);
     }
@@ -81,39 +112,40 @@ const EditBillPage = ({ bill }: { bill: Bills }) => {
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Edit Bill</DialogTitle>
+            <DialogTitle>Edit Tagihan</DialogTitle>
             <DialogDescription>
-              Update bill information
+              Perbarui informasi tagihan
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div>
-              <Label>Usage</Label>
+              <Label>Nomor Meteran</Label>
               <Input
-                type="number"
-                value={usage}
-                onChange={(e)=>setUsage(Number(e.target.value))}
+                value={measurement}
+                onChange={(e) => setMeasurement(e.target.value)}
+                placeholder="Nomor meteran"
               />
             </div>
 
             <div>
-              <Label>Price</Label>
+              <Label>Pemakaian (m³)</Label>
               <Input
                 type="number"
-                value={price}
-                onChange={(e)=>setPrice(Number(e.target.value))}
+                value={usage}
+                onChange={(e) => setUsage(Number(e.target.value))}
+                min={0}
               />
             </div>
           </div>
 
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button type="button" variant="outline">Batal</Button>
             </DialogClose>
 
             <Button disabled={isLoading}>
-              {isLoading ? "Updating..." : "Update"}
+              {isLoading ? "Menyimpan..." : "Simpan"}
             </Button>
           </DialogFooter>
         </form>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Cookies from "js-cookie";
 import {
@@ -48,14 +48,7 @@ interface Bill {
   updatedAt: string;
   service: Service;
   admin: { id: number; name: string; };
-  payments: {
-    id: number;
-    verified: boolean;
-    total_amount: number;
-    payment_proof: string;
-    payment_date: string;
-  } | null;
-  amount: number;
+  customer: { id: number; name: string; customer_number: string; };
 }
 
 function getToken() {
@@ -91,7 +84,6 @@ function UploadPayment({ bill, onSuccess }: { bill: Bill; onSuccess: () => void 
           headers: {
             "APP-KEY": process.env.NEXT_PUBLIC_APP_KEY ?? "",
             Authorization: `Bearer ${getToken()}`,
-            // ❌ jangan set Content-Type manual untuk form-data
           },
           body: formData,
         }
@@ -121,7 +113,7 @@ function UploadPayment({ bill, onSuccess }: { bill: Bill; onSuccess: () => void 
           <DialogHeader>
             <DialogTitle>Upload Bukti Pembayaran</DialogTitle>
             <DialogDescription>
-              Tagihan {MONTH_NAMES[bill.month]} {bill.year} — {formatCurrency(bill.amount)}
+              Tagihan {MONTH_NAMES[bill.month]} {bill.year} — {formatCurrency(bill.price)}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
@@ -129,7 +121,7 @@ function UploadPayment({ bill, onSuccess }: { bill: Bill; onSuccess: () => void 
               <Label>Bukti Pembayaran *</Label>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,.pdf"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                 required
@@ -141,8 +133,9 @@ function UploadPayment({ bill, onSuccess }: { bill: Bill; onSuccess: () => void 
             <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
               <p className="font-medium">Detail Tagihan:</p>
               <p>Bulan: {MONTH_NAMES[bill.month]} {bill.year}</p>
+              <p>No. Meteran: {bill.measurement_number}</p>
               <p>Pemakaian: {bill.usage_value} m³</p>
-              <p>Total: {formatCurrency(bill.amount)}</p>
+              <p>Total: {formatCurrency(bill.price)}</p>
             </div>
           </div>
           <DialogFooter>
@@ -157,8 +150,8 @@ function UploadPayment({ bill, onSuccess }: { bill: Bill; onSuccess: () => void 
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-export default function CustBillsPage() {
+// ─── Main Content ─────────────────────────────────────────────────────────────
+function CustBillsContent() {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page")) || 1;
   const quantity = Number(searchParams.get("quantity")) || 10;
@@ -172,7 +165,7 @@ export default function CustBillsPage() {
     setLoading(true);
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/bills/customer?page=${page}&quantity=${quantity}&search=${searchValue}`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/bills/me?page=${page}&quantity=${quantity}&search=${searchValue}`,
         {
           headers: {
             "APP-KEY": process.env.NEXT_PUBLIC_APP_KEY ?? "",
@@ -306,27 +299,21 @@ export default function CustBillsPage() {
                           <div className="text-xs text-gray-400">{bill.service?.min_usage}-{bill.service?.max_usage} m³</div>
                         </TableCell>
                         <TableCell className="text-right font-semibold text-blue-600">
-                          {formatCurrency(bill.amount)}
+                          {formatCurrency(bill.price)}
                         </TableCell>
                         <TableCell className="text-center">
                           {bill.paid ? (
                             <Badge className="bg-green-100 text-green-700 border-green-300">Lunas</Badge>
-                          ) : bill.payments ? (
-                            <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300">Menunggu Verifikasi</Badge>
                           ) : (
                             <Badge className="bg-red-100 text-red-600 border-red-200">Belum Bayar</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-center">
-                          {!bill.paid && !bill.payments ? (
+                          {!bill.paid ? (
                             <UploadPayment bill={bill} onSuccess={() => fetchBills(searchInput)} />
                           ) : (
-                            <span className="text-xs text-gray-400">
-                              {bill.payments ? (
-                                <span className="flex items-center gap-1 justify-center">
-                                  <Clock className="w-3 h-3" /> Diproses
-                                </span>
-                              ) : "Selesai"}
+                            <span className="text-xs text-gray-400 flex items-center gap-1 justify-center">
+                              <CheckCircle className="w-3 h-3 text-green-500" /> Lunas
                             </span>
                           )}
                         </TableCell>
@@ -345,5 +332,13 @@ export default function CustBillsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function CustBillsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>}>
+      <CustBillsContent />
+    </Suspense>
   );
 }

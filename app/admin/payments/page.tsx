@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Cookies from "js-cookie";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   CreditCard, CheckCircle, Clock, Search as SearchIcon,
-  Receipt, ExternalLink, ShieldCheck, Trash2, Eye,
+  Receipt, ExternalLink, ShieldCheck, Trash2, Eye, Printer,
 } from "lucide-react";
 import SimplePagination from "@/components/Pagination";
 import { toast } from "sonner";
@@ -48,9 +48,9 @@ interface Payment {
     usage_value: number;
     price: number;
     paid: boolean;
-    service: { name: string; };
-    admin: { name: string; };
-    customer: { id: number; name: string; customer_number: string; };
+    service: { name: string };
+    admin: { name: string };
+    customer: { id: number; name: string; customer_number: string };
   };
 }
 
@@ -68,60 +68,252 @@ function formatDate(dateStr: string): string {
   });
 }
 
+// ─── Print Handler ────────────────────────────────────────────────────────────
+function handlePrint(payment: Payment, proofUrl: string) {
+  const printWindow = window.open("", "_blank", "width=820,height=960");
+  if (!printWindow) {
+    toast.error("Popup diblokir browser. Izinkan popup untuk mencetak.");
+    return;
+  }
+
+  const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(payment.payment_proof ?? "");
+  const printedAt = new Date().toLocaleDateString("id-ID", {
+    day: "numeric", month: "long", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+
+  printWindow.document.write(`<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Kuitansi #PAY-${String(payment.id).padStart(5, "0")}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1a1a1a;padding:36px 40px;font-size:13px;line-height:1.5}
+
+    /* ── Header ── */
+    .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:18px;border-bottom:2.5px solid #1d4ed8;margin-bottom:22px}
+    .brand-name{font-size:20px;font-weight:700;color:#1d4ed8;letter-spacing:-0.3px}
+    .brand-sub{font-size:11px;color:#6b7280;margin-top:2px}
+    .receipt-title{font-size:15px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.06em;text-align:right}
+    .receipt-no{font-size:11px;color:#6b7280;text-align:right;margin-top:3px}
+
+    /* ── Status ── */
+    .status-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;margin-bottom:20px}
+    .pill-green{background:#dcfce7;color:#15803d;border:1px solid #86efac}
+    .pill-yellow{background:#fef9c3;color:#a16207;border:1px solid #fde047}
+
+    /* ── Sections ── */
+    .section-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#9ca3af;margin-bottom:9px}
+    .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 28px;margin-bottom:20px}
+    .info-item{display:flex;flex-direction:column;gap:2px}
+    .info-key{font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af}
+    .info-val{font-size:13px;font-weight:500;color:#111827}
+
+    /* ── Divider ── */
+    .divider{border:none;border-top:1px dashed #d1d5db;margin:18px 0}
+
+    /* ── Total ── */
+    .total-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}
+    .total-label{font-size:13px;font-weight:600;color:#1d4ed8}
+    .total-val{font-size:22px;font-weight:700;color:#1d4ed8}
+
+    /* ── Proof ── */
+    .proof-box{margin-bottom:22px}
+    .proof-img{width:100%;max-height:300px;object-fit:contain;border:1px solid #e5e7eb;border-radius:8px;margin-top:8px;display:block}
+    .proof-link{display:inline-flex;align-items:center;gap:4px;color:#2563eb;font-size:12px;margin-top:8px;word-break:break-all;text-decoration:underline}
+
+    /* ── Footer ── */
+    .footer{display:flex;justify-content:space-between;align-items:flex-end;padding-top:18px;border-top:1px solid #e5e7eb;margin-top:8px}
+    .footer-note{font-size:10px;color:#9ca3af;line-height:1.6;max-width:300px}
+    .ttd{text-align:center}
+    .ttd-line{width:140px;border-bottom:1px solid #374151;margin:44px auto 7px}
+    .ttd-name{font-size:12px;font-weight:600;color:#374151}
+    .ttd-role{font-size:10px;color:#9ca3af}
+
+    @media print{body{padding:14px}@page{margin:10mm;size:A4}}
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <div class="brand-name">PDAM Tirta Sejahtera</div>
+      <div class="brand-sub">Perusahaan Daerah Air Minum</div>
+    </div>
+    <div>
+      <div class="receipt-title">Kuitansi Pembayaran</div>
+      <div class="receipt-no">No. #PAY-${String(payment.id).padStart(5, "0")}</div>
+    </div>
+  </div>
+
+  <div class="status-pill ${payment.verified ? "pill-green" : "pill-yellow"}">
+    ${payment.verified ? "✓ Pembayaran Terverifikasi" : "⏳ Menunggu Verifikasi Admin"}
+  </div>
+
+  <div class="section-label">Informasi Pelanggan</div>
+  <div class="info-grid">
+    <div class="info-item"><span class="info-key">Nama</span><span class="info-val">${payment.bill?.customer?.name ?? "-"}</span></div>
+    <div class="info-item"><span class="info-key">No. Pelanggan</span><span class="info-val">${payment.bill?.customer?.customer_number ?? "-"}</span></div>
+    <div class="info-item"><span class="info-key">Layanan</span><span class="info-val">${payment.bill?.service?.name ?? "-"}</span></div>
+    <div class="info-item"><span class="info-key">No. Meteran</span><span class="info-val">${payment.bill?.measurement_number ?? "-"}</span></div>
+  </div>
+
+  <hr class="divider"/>
+
+  <div class="section-label">Detail Tagihan</div>
+  <div class="info-grid">
+    <div class="info-item"><span class="info-key">Periode</span><span class="info-val">${MONTH_NAMES[payment.bill?.month]} ${payment.bill?.year}</span></div>
+    <div class="info-item"><span class="info-key">Pemakaian</span><span class="info-val">${payment.bill?.usage_value ?? 0} m³</span></div>
+    <div class="info-item"><span class="info-key">Tanggal Bayar</span><span class="info-val">${formatDate(payment.payment_date)}</span></div>
+    <div class="info-item"><span class="info-key">ID Transaksi</span><span class="info-val">#PAY-${String(payment.id).padStart(5, "0")}</span></div>
+  </div>
+
+  <div class="total-box">
+    <span class="total-label">Total Pembayaran</span>
+    <span class="total-val">${formatCurrency(payment.total_amount)}</span>
+  </div>
+
+  <div class="proof-box">
+    <div class="section-label">Bukti Pembayaran</div>
+    ${isImage
+      ? `<img src="${proofUrl}" alt="Bukti Pembayaran" class="proof-img"/>`
+      : `<a href="${proofUrl}" class="proof-link" target="_blank">📎 ${payment.payment_proof}</a>`
+    }
+  </div>
+
+  <div class="footer">
+    <div class="footer-note">
+      Dicetak: ${printedAt}<br/>
+      Dokumen ini merupakan bukti pembayaran resmi dari PDAM Tirta Sejahtera.<br/>
+      Simpan dokumen ini sebagai arsip pembayaran Anda.
+    </div>
+    <div class="ttd">
+      <div class="ttd-line"></div>
+      <div class="ttd-name">${payment.bill?.admin?.name ?? "Petugas PDAM"}</div>
+      <div class="ttd-role">Petugas Verifikasi</div>
+    </div>
+  </div>
+
+</body>
+</html>`);
+
+  printWindow.document.close();
+  printWindow.onload = () => {
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 450);
+  };
+}
+
 // ─── Proof Image Modal ────────────────────────────────────────────────────────
 function ProofImageModal({ payment }: { payment: Payment }) {
   const [open, setOpen] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const proofUrl = `${process.env.NEXT_PUBLIC_BASE_API_URL}/payment-proof/${payment.payment_proof}`;
 
   if (!payment.payment_proof) return <span className="text-xs text-gray-400">-</span>;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setImgError(false); }}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="h-7 gap-1 text-xs">
           <Eye className="w-3 h-3" /> Lihat Bukti
         </Button>
       </DialogTrigger>
+
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Bukti Pembayaran</DialogTitle>
           <DialogDescription>
-            {payment.bill?.customer?.name} — {MONTH_NAMES[payment.bill?.month]} {payment.bill?.year}
+            {payment.bill?.customer?.name} —{" "}
+            {MONTH_NAMES[payment.bill?.month]} {payment.bill?.year}
+            {" · "}
+            <span className="font-medium text-gray-700">
+              {formatCurrency(payment.total_amount)}
+            </span>
           </DialogDescription>
         </DialogHeader>
-        <div className="py-2">
-          <img
-            src={proofUrl}
-            alt="Bukti Pembayaran"
-            className="w-full rounded-lg border object-contain max-h-96"
-            onError={(e) => {
-              // If not image, show link
-              e.currentTarget.style.display = "none";
-              e.currentTarget.nextElementSibling?.removeAttribute("hidden");
-            }}
-          />
-          <div hidden className="p-4 bg-gray-50 rounded-lg text-center">
-            <p className="text-sm text-gray-600 mb-2">File tidak dapat ditampilkan sebagai gambar</p>
-            <a
-              href={proofUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline text-sm inline-flex items-center gap-1"
-            >
-              <ExternalLink className="w-3 h-3" /> Buka File
-            </a>
+
+        <div className="py-2 space-y-3">
+          {/* Proof preview */}
+          {!imgError ? (
+            <img
+              src={proofUrl}
+              alt="Bukti Pembayaran"
+              className="w-full rounded-lg border object-contain max-h-72"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div className="p-6 bg-gray-50 rounded-lg text-center border border-dashed">
+              <Receipt className="mx-auto h-10 w-10 text-gray-400 mb-2" />
+              <p className="text-sm text-gray-500 mb-3">
+                File tidak dapat ditampilkan sebagai gambar
+              </p>
+              <a
+                href={proofUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline text-sm inline-flex items-center gap-1"
+              >
+                <ExternalLink className="w-3 h-3" /> Buka File
+              </a>
+            </div>
+          )}
+
+          {/* Info ringkas */}
+          <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 rounded-lg p-3 border">
+            <div>
+              <span className="text-gray-400 block">Pelanggan</span>
+              <span className="font-medium text-gray-700">
+                {payment.bill?.customer?.name ?? "-"}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-400 block">No. Pelanggan</span>
+              <span className="font-medium text-gray-700 font-mono">
+                {payment.bill?.customer?.customer_number ?? "-"}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-400 block">Periode</span>
+              <span className="font-medium text-gray-700">
+                {MONTH_NAMES[payment.bill?.month]} {payment.bill?.year}
+              </span>
+            </div>
+            <div>
+              <span className="text-gray-400 block">Tanggal Bayar</span>
+              <span className="font-medium text-gray-700">
+                {formatDate(payment.payment_date)}
+              </span>
+            </div>
           </div>
         </div>
-        <DialogFooter>
+
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:items-center">
+          {/* Buka di tab baru — di kiri */}
           <a
             href={proofUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800"
+            className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 sm:mr-auto"
           >
             <ExternalLink className="w-3.5 h-3.5" /> Buka di Tab Baru
           </a>
-          <Button variant="outline" onClick={() => setOpen(false)}>Tutup</Button>
+
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Tutup
+          </Button>
+
+          {/* ✅ Cetak Kuitansi */}
+          <Button
+            className="gap-1.5 bg-blue-600 hover:bg-blue-700"
+            onClick={() => handlePrint(payment, proofUrl)}
+          >
+            <Printer className="w-4 h-4" />
+            Cetak Kuitansi
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -157,7 +349,11 @@ function VerifyPayment({ payment, onSuccess }: { payment: Payment; onSuccess: ()
   };
 
   if (payment.verified) {
-    return <Badge className="bg-green-100 text-green-700 border-green-300 text-xs">Terverifikasi</Badge>;
+    return (
+      <Badge className="bg-green-100 text-green-700 border-green-300 text-xs">
+        Terverifikasi
+      </Badge>
+    );
   }
 
   return (
@@ -171,7 +367,8 @@ function VerifyPayment({ payment, onSuccess }: { payment: Payment; onSuccess: ()
         <AlertDialogHeader>
           <AlertDialogTitle>Verifikasi Pembayaran?</AlertDialogTitle>
           <AlertDialogDescription>
-            Konfirmasi pembayaran dari <strong>{payment.bill?.customer?.name}</strong> untuk tagihan{" "}
+            Konfirmasi pembayaran dari{" "}
+            <strong>{payment.bill?.customer?.name}</strong> untuk tagihan{" "}
             <strong>{MONTH_NAMES[payment.bill?.month]} {payment.bill?.year}</strong> sebesar{" "}
             <strong>{formatCurrency(payment.total_amount)}</strong>.
             <br /><br />
@@ -236,7 +433,8 @@ function DeletePayment({ payment, onSuccess }: { payment: Payment; onSuccess: ()
         <AlertDialogHeader>
           <AlertDialogTitle>Hapus Pembayaran?</AlertDialogTitle>
           <AlertDialogDescription>
-            Hapus data pembayaran dari <strong>{payment.bill?.customer?.name}</strong>?
+            Hapus data pembayaran dari{" "}
+            <strong>{payment.bill?.customer?.name}</strong>?
             Tindakan ini tidak dapat dibatalkan.
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -258,19 +456,21 @@ function DeletePayment({ payment, onSuccess }: { payment: Payment; onSuccess: ()
 // ─── Main Content ─────────────────────────────────────────────────────────────
 function AdminPaymentsContent() {
   const searchParams = useSearchParams();
-  const page = Number(searchParams.get("page")) || 1;
+  const router = useRouter();
+  const pathname = usePathname();
+  const page     = Number(searchParams.get("page"))     || 1;
   const quantity = Number(searchParams.get("quantity")) || 10;
 
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [count, setCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [payments, setPayments]     = useState<Payment[]>([]);
+  const [loading, setLoading]       = useState(true);
   const [searchInput, setSearchInput] = useState("");
+  const [activeFilter, setActiveFilter] = useState<"semua" | "pending" | "verified">("semua");
 
   const fetchPayments = useCallback(async (searchValue = "") => {
     setLoading(true);
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/payments?page=${page}&quantity=${quantity}&search=${searchValue}`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/payments?page=1&quantity=9999&search=${searchValue}`,
         {
           headers: {
             "APP-KEY": process.env.NEXT_PUBLIC_APP_KEY ?? "",
@@ -282,25 +482,37 @@ function AdminPaymentsContent() {
       const result = await res.json();
       if (result.success) {
         setPayments(result.data);
-        setCount(result.count);
       }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [page, quantity]);
+  }, []);
 
-  useEffect(() => { fetchPayments(searchInput); }, [page, quantity]);
-
-  useEffect(() => {
-    const t = setTimeout(() => fetchPayments(searchInput), 400);
-    return () => clearTimeout(t);
-  }, [searchInput]);
+  useEffect(() => { fetchPayments(searchInput); }, [fetchPayments, searchInput]);
 
   const verifiedCount = payments.filter(p => p.verified).length;
-  const pendingCount = payments.filter(p => !p.verified).length;
-  const totalAmount = payments.reduce((s, p) => s + p.total_amount, 0);
+  const pendingCount  = payments.filter(p => !p.verified).length;
+
+  const filteredPayments = payments.filter((payment) => {
+    if (activeFilter === "semua") return true;
+    if (activeFilter === "pending") return !payment.verified;
+    if (activeFilter === "verified") return payment.verified;
+    return true;
+  });
+
+  const totalFilteredCount = filteredPayments.length;
+  const startIndex = (page - 1) * quantity;
+  const paginatedPayments = filteredPayments.slice(startIndex, startIndex + quantity);
+  const totalAmount   = paginatedPayments.reduce((s, p) => s + p.total_amount, 0);
+
+  const handleFilterChange = (val: string) => {
+    setActiveFilter(val as any);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", "1");
+    router.push(`${pathname}?${params.toString()}`);
+  }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Manajemen Pembayaran</h1>
         <p className="text-gray-500 mt-1">Kelola dan verifikasi pembayaran dari pelanggan</p>
@@ -308,18 +520,18 @@ function AdminPaymentsContent() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card className="bg-linear-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-blue-100">Total Pembayaran</CardTitle>
             <CreditCard className="h-5 w-5 text-blue-100" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{count}</div>
+            <div className="text-3xl font-bold">{payments.length}</div>
             <p className="text-xs text-blue-100 mt-1">Transaksi</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-linear-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-green-100">Terverifikasi</CardTitle>
             <CheckCircle className="h-5 w-5 text-green-100" />
@@ -330,7 +542,7 @@ function AdminPaymentsContent() {
           </CardContent>
         </Card>
 
-        <Card className="bg-linear-to-br from-yellow-500 to-yellow-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-yellow-100">Menunggu Verifikasi</CardTitle>
             <Clock className="h-5 w-5 text-yellow-100" />
@@ -341,7 +553,7 @@ function AdminPaymentsContent() {
           </CardContent>
         </Card>
 
-        <Card className="bg-linear-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
+        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-purple-100">Total Pendapatan</CardTitle>
             <Receipt className="h-5 w-5 text-purple-100" />
@@ -361,20 +573,36 @@ function AdminPaymentsContent() {
               <CardTitle className="text-xl">Daftar Pembayaran</CardTitle>
               <CardDescription>Semua transaksi pembayaran dari pelanggan</CardDescription>
             </div>
-            <div className="relative w-full md:w-72">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <SearchIcon className="h-4 w-4 text-gray-400" />
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              <div className="flex items-center gap-2 bg-gray-50 rounded-xl border border-gray-200 px-3 py-2 shadow-sm">
+                <label className="text-sm font-medium text-gray-500">Status:</label>
+                <select
+                  value={activeFilter}
+                  onChange={(e) => handleFilterChange(e.target.value)}
+                  className="bg-transparent border-none text-sm text-gray-700 outline-none cursor-pointer focus:ring-0"
+                >
+                  <option value="semua">Semua</option>
+                  <option value="pending">Pending</option>
+                  <option value="verified">Verified</option>
+                </select>
               </div>
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Cari pembayaran..."
-                className="w-full pl-10 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+
+              <div className="relative w-full md:w-64">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <SearchIcon className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Cari pembayaran..."
+                  className="w-full pl-10 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
             </div>
           </div>
         </CardHeader>
+
         <CardContent>
           {loading ? (
             <div className="text-center py-12 text-gray-400">Loading...</div>
@@ -401,10 +629,10 @@ function AdminPaymentsContent() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {payments.map((payment, index) => (
+                    {paginatedPayments.map((payment, index) => (
                       <TableRow key={payment.id} className="hover:bg-gray-50">
                         <TableCell className="font-medium">
-                          {(page - 1) * quantity + index + 1}
+                          {startIndex + index + 1}
                         </TableCell>
                         <TableCell>
                           <div className="font-medium text-gray-900">
@@ -436,9 +664,13 @@ function AdminPaymentsContent() {
                         </TableCell>
                         <TableCell className="text-center">
                           {payment.verified ? (
-                            <Badge className="bg-green-100 text-green-700 border-green-300">Terverifikasi</Badge>
+                            <Badge className="bg-green-100 text-green-700 border-green-300">
+                              Terverifikasi
+                            </Badge>
                           ) : (
-                            <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300">Menunggu</Badge>
+                            <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300">
+                              Menunggu
+                            </Badge>
                           )}
                         </TableCell>
                         <TableCell>
@@ -460,9 +692,9 @@ function AdminPaymentsContent() {
                   </TableBody>
                 </Table>
               </div>
-              {count > quantity && (
+              {totalFilteredCount > quantity && (
                 <div className="mt-4 flex justify-center">
-                  <SimplePagination count={count} perPage={quantity} currentPage={page} />
+                  <SimplePagination count={totalFilteredCount} perPage={quantity} currentPage={page} />
                 </div>
               )}
             </>
@@ -475,7 +707,11 @@ function AdminPaymentsContent() {
 
 export default function AdminPaymentsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>}>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center text-gray-400">
+        Loading...
+      </div>
+    }>
       <AdminPaymentsContent />
     </Suspense>
   );

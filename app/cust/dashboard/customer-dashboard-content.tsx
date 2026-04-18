@@ -80,8 +80,8 @@ export default function CustDashboardPage() {
       try {
         const [profileRes, billsRes, paymentsRes] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_BASE_API_URL}/customers/me`, { headers }),
-          fetch(`${process.env.NEXT_PUBLIC_BASE_API_URL}/bills/customer?page=1&quantity=99999`, { headers }),
-          fetch(`${process.env.NEXT_PUBLIC_BASE_API_URL}/payments/customer?page=1&quantity=99999`, { headers }),
+          fetch(`${process.env.NEXT_PUBLIC_BASE_API_URL}/bills/me?page=1&quantity=99999`, { headers }),
+          fetch(`${process.env.NEXT_PUBLIC_BASE_API_URL}/payments/me?page=1&quantity=99999`, { headers }),
         ]);
 
         const [profileData, billsData, paymentsData] = await Promise.all([

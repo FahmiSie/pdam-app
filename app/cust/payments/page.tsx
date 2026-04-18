@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Cookies from "js-cookie";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -53,21 +53,23 @@ function formatDate(dateStr: string): string {
   });
 }
 
-export default function CustPaymentsPage() {
+function CustPaymentsContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const page = Number(searchParams.get("page")) || 1;
   const quantity = Number(searchParams.get("quantity")) || 10;
 
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("");
+  const [activeFilter, setActiveFilter] = useState<"semua" | "pending" | "verified">("semua");
 
   const fetchPayments = useCallback(async (searchValue = "") => {
     setLoading(true);
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/payments/customer?page=${page}&quantity=${quantity}&search=${searchValue}`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/payments/me?page=1&quantity=9999&search=${searchValue}`,
         {
           headers: {
             "APP-KEY": process.env.NEXT_PUBLIC_APP_KEY ?? "",
@@ -79,22 +81,34 @@ export default function CustPaymentsPage() {
       const result = await res.json();
       if (result.success) {
         setPayments(result.data);
-        setCount(result.count);
       }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, [page, quantity]);
+  }, []);
 
-  useEffect(() => { fetchPayments(searchInput); }, [page, quantity]);
-
-  useEffect(() => {
-    const t = setTimeout(() => fetchPayments(searchInput), 400);
-    return () => clearTimeout(t);
-  }, [searchInput]);
+  useEffect(() => { fetchPayments(searchInput); }, [fetchPayments, searchInput]);
 
   const verifiedCount = payments.filter(p => p.verified).length;
   const pendingCount = payments.filter(p => !p.verified).length;
-  const totalAmount = payments.reduce((s, p) => s + p.total_amount, 0);
+
+  const filteredPayments = payments.filter((payment) => {
+    if (activeFilter === "semua") return true;
+    if (activeFilter === "pending") return !payment.verified;
+    if (activeFilter === "verified") return payment.verified;
+    return true;
+  });
+
+  const totalFilteredCount = filteredPayments.length;
+  const startIndex = (page - 1) * quantity;
+  const paginatedPayments = filteredPayments.slice(startIndex, startIndex + quantity);
+  const totalAmount = paginatedPayments.reduce((s, p) => s + p.total_amount, 0);
+
+  const handleFilterChange = (val: string) => {
+    setActiveFilter(val as any);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", "1");
+    router.push(`${pathname}?${params.toString()}`);
+  }
 
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 p-6">
@@ -111,7 +125,7 @@ export default function CustPaymentsPage() {
             <CreditCard className="h-5 w-5 text-blue-100" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{count}</div>
+            <div className="text-3xl font-bold">{payments.length}</div>
             <p className="text-xs text-blue-100 mt-1">Transaksi</p>
           </CardContent>
         </Card>
@@ -147,17 +161,33 @@ export default function CustPaymentsPage() {
               <CardTitle className="text-xl">Riwayat Transaksi</CardTitle>
               <CardDescription>Semua transaksi pembayaran tagihan PDAM</CardDescription>
             </div>
-            <div className="relative w-full md:w-72">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <SearchIcon className="h-4 w-4 text-gray-400" />
+            
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              <div className="flex items-center gap-2 bg-gray-50 rounded-xl border border-gray-200 px-3 py-2 shadow-sm">
+                <label className="text-sm font-medium text-gray-500">Status:</label>
+                <select
+                  value={activeFilter}
+                  onChange={(e) => handleFilterChange(e.target.value)}
+                  className="bg-transparent border-none text-sm text-gray-700 outline-none cursor-pointer focus:ring-0"
+                >
+                  <option value="semua">Semua</option>
+                  <option value="pending">Pending</option>
+                  <option value="verified">Verified</option>
+                </select>
               </div>
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Cari pembayaran..."
-                className="w-full pl-10 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+
+              <div className="relative w-full md:w-64">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <SearchIcon className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Cari pembayaran..."
+                  className="w-full pl-10 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -186,10 +216,10 @@ export default function CustPaymentsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {payments.map((payment, index) => (
+                    {paginatedPayments.map((payment, index) => (
                       <TableRow key={payment.id} className="hover:bg-gray-50">
                         <TableCell className="font-medium">
-                          {(page - 1) * quantity + index + 1}
+                          {startIndex + index + 1}
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">
@@ -232,9 +262,9 @@ export default function CustPaymentsPage() {
                   </TableBody>
                 </Table>
               </div>
-              {count > quantity && (
+              {totalFilteredCount > quantity && (
                 <div className="mt-4 flex justify-center">
-                  <SimplePagination count={count} perPage={quantity} currentPage={page} />
+                  <SimplePagination count={totalFilteredCount} perPage={quantity} currentPage={page} />
                 </div>
               )}
             </>
@@ -242,5 +272,15 @@ export default function CustPaymentsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function CustPaymentsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>
+    }>
+      <CustPaymentsContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,10 @@
+"use client";
+
 // Admin Bills Page - Show all bills by admin
 
-import { cookies } from "next/headers";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import Cookies from "js-cookie";
 import AddBill from "./add";
 import EditBillPage from "./edit";
 import DeleteBillPage from "./delete";
@@ -48,56 +52,18 @@ interface Bill {
   admin: { id: number; name: string; };
 }
 
-type ResultData = {
-  success: boolean;
-  message: string;
-  data: Bill[];
-  count: number;
-};
-
-type Props = {
-  searchParams: Promise<{
-    page?: number;
-    quantity?: number;
-    search?: string;
-  }>;
-};
+interface Payment {
+  id: number;
+  bill_id: number;
+  verified: boolean;
+}
 
 const MONTH_NAMES = [
   "", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
-async function getBills(
-  page: number,
-  quantity: number,
-  search: string,
-): Promise<ResultData> {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("accessToken")?.value;
-
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_API_URL}/bills?page=${page}&quantity=${quantity}&search=${search}`,
-      {
-        headers: {
-          "APP-KEY": process.env.NEXT_PUBLIC_APP_KEY ?? "",
-          Authorization: `Bearer ${token}`,
-          "Content-type": "application/json",
-        },
-        cache: "no-store",
-      },
-    );
-
-    const result: ResultData = await response.json();
-    if (!response.ok)
-      return { success: false, message: "Failed", data: [], count: 0 };
-    return result;
-  } catch (error) {
-    console.error("Fetch bills error:", error);
-    return { success: false, message: "Error", data: [], count: 0 };
-  }
-}
+function getToken() { return Cookies.get("accessToken"); }
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("id-ID", {
@@ -111,17 +77,90 @@ function formatNumber(num: number): string {
   return new Intl.NumberFormat("id-ID").format(num);
 }
 
-export default async function BillsPage({ searchParams }: Props) {
-  const page = Number((await searchParams)?.page) || 1;
-  const quantity = Number((await searchParams)?.quantity) || 10;
-  const search = (await searchParams)?.search || "";
+type FilterStatus = "semua" | "belum_bayar" | "pending" | "lunas";
 
-  const { data: bills, count } = await getBills(page, quantity, search);
+function getBillStatus(bill: Bill, payments: Payment[]): FilterStatus {
+  if (bill.paid) return "lunas";
+  const payment = payments.find((p) => p.bill_id === bill.id);
+  if (payment) return "pending";
+  return "belum_bayar";
+}
 
-  const totalRevenue = bills.reduce((s, b) => s + b.price, 0);
-  const paidBills = bills.filter((b) => b.paid).length;
-  const unpaidBills = bills.filter((b) => !b.paid).length;
-  const totalUsage = bills.reduce((s, b) => s + b.usage_value, 0);
+function AdminBillsContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const page = Number(searchParams.get("page")) || 1;
+  const quantity = Number(searchParams.get("quantity")) || 10;
+  const search = searchParams.get("search") || "";
+
+  const [bills, setBills] = useState<Bill[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<FilterStatus>("semua");
+
+  const fetchData = useCallback(async (searchValue = "") => {
+    setLoading(true);
+    try {
+      const headers = {
+        "APP-KEY": process.env.NEXT_PUBLIC_APP_KEY ?? "",
+        Authorization: `Bearer ${getToken()}`,
+      };
+
+      const [billsRes, paymentsRes] = await Promise.all([
+        fetch(
+          `${process.env.NEXT_PUBLIC_BASE_API_URL}/bills?page=1&quantity=9999&search=${searchValue}`,
+          { headers, cache: "no-store" }
+        ),
+        fetch(
+          `${process.env.NEXT_PUBLIC_BASE_API_URL}/payments?page=1&quantity=9999`,
+          { headers, cache: "no-store" }
+        ),
+      ]);
+
+      const billsData = await billsRes.json();
+      const paymentsData = await paymentsRes.json();
+
+      if (billsData.success) {
+        setBills(billsData.data);
+      }
+      if (paymentsData.success) {
+        setPayments(paymentsData.data);
+      }
+    } catch (error) {
+      console.error("Fetch bills error:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchData(search); }, [search, fetchData]);
+
+  const filteredBills = bills.filter((bill) => {
+    if (activeFilter === "semua") return true;
+    return getBillStatus(bill, payments) === activeFilter;
+  });
+
+  const totalFilteredCount = filteredBills.length;
+  const startIndex = (page - 1) * quantity;
+  const paginatedBills = filteredBills.slice(startIndex, startIndex + quantity);
+
+  const handleFilterChange = (val: FilterStatus) => {
+    setActiveFilter(val);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", "1");
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
+  const totalRevenue = paginatedBills.reduce((s, b) => s + b.price, 0);
+  const totalUsage = paginatedBills.reduce((s, b) => s + b.usage_value, 0);
+
+  const statusCounts = {
+    all: bills.length,
+    lunas: bills.filter(b => getBillStatus(b, payments) === "lunas").length,
+    pending: bills.filter(b => getBillStatus(b, payments) === "pending").length,
+    belum_bayar: bills.filter(b => getBillStatus(b, payments) === "belum_bayar").length,
+  };
 
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 p-6">
@@ -143,7 +182,7 @@ export default async function BillsPage({ searchParams }: Props) {
             <Package className="h-5 w-5 text-blue-100" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{count}</div>
+            <div className="text-3xl font-bold">{bills.length}</div>
             <p className="text-xs text-blue-100 mt-1">Semua tagihan</p>
           </CardContent>
         </Card>
@@ -154,7 +193,7 @@ export default async function BillsPage({ searchParams }: Props) {
             <DollarSign className="h-5 w-5 text-green-100" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{paidBills}</div>
+            <div className="text-3xl font-bold">{statusCounts.lunas}</div>
             <p className="text-xs text-green-100 mt-1">Tagihan lunas</p>
           </CardContent>
         </Card>
@@ -165,7 +204,7 @@ export default async function BillsPage({ searchParams }: Props) {
             <TrendingUp className="h-5 w-5 text-red-100" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{unpaidBills}</div>
+            <div className="text-3xl font-bold">{statusCounts.belum_bayar}</div>
             <p className="text-xs text-red-100 mt-1">Perlu tindakan</p>
           </CardContent>
         </Card>
@@ -192,11 +231,26 @@ export default async function BillsPage({ searchParams }: Props) {
                 Semua tagihan air PDAM
                 {search && (
                   <span className="ml-2 text-blue-600 font-medium">
-                    — hasil pencarian &quot;{search}&quot; ({count} ditemukan)
+                    — hasil pencarian &quot;{search}&quot;
                   </span>
                 )}
               </CardDescription>
             </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3 items-center w-full md:w-auto">
+              <div className="flex items-center gap-2 bg-white rounded-xl border border-gray-100 shadow-sm px-2 py-1 h-[42px]">
+                <label className="text-sm text-gray-500 font-medium pl-2">Status:</label>
+                <select
+                  value={activeFilter}
+                  onChange={(e) => handleFilterChange(e.target.value as FilterStatus)}
+                  className="bg-transparent border-none text-sm text-gray-700 focus:ring-0 cursor-pointer outline-none"
+                >
+                  <option value="semua">Semua</option>
+                  <option value="belum_bayar">Belum Bayar</option>
+                  <option value="pending">Pending Verifikasi</option>
+                  <option value="lunas">Verified / Lunas</option>
+                </select>
+              </div>
             <div className="relative w-full md:w-72">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg className="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -206,17 +260,19 @@ export default async function BillsPage({ searchParams }: Props) {
               <Search
                 search={search}
                 placeholder="Cari tagihan..."
-                className="w-full pl-10 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:bg-white hover:border-gray-300 shadow-sm"
               />
             </div>
           </div>
+        </div>
         </CardHeader>
         <CardContent>
-          {bills.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-12 text-gray-400">Loading...</div>
+          ) : filteredBills.length === 0 ? (
             <div className="text-center py-12">
               <Package className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-4 text-lg font-medium text-gray-900">
-                {search ? `Tagihan "${search}" tidak ditemukan` : "Belum ada tagihan"}
+                {search ? `Tagihan "${search}" tidak ditemukan` : "Belum ada tagihan sesuai filter"}
               </h3>
               <p className="mt-2 text-sm text-gray-500">
                 {search ? "Coba kata kunci lain." : "Mulai dengan membuat tagihan baru."}
@@ -241,53 +297,59 @@ export default async function BillsPage({ searchParams }: Props) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {bills.map((bill, index) => (
-                    <TableRow key={bill.id} className="hover:bg-gray-50">
-                      <TableCell className="font-medium">
-                        {(page - 1) * quantity + index + 1}
-                      </TableCell>
+                  {paginatedBills.map((bill, index) => {
+                    const status = getBillStatus(bill, payments);
+                    return (
+                      <TableRow key={bill.id} className="hover:bg-gray-50">
+                        <TableCell className="font-medium">
+                          {startIndex + index + 1}
+                        </TableCell>
 
-                      <TableCell>
-                        <div className="font-medium text-gray-900">
-                          {bill.customer?.name ?? `ID: ${bill.customer_id}`}
-                        </div>
-                        {bill.customer?.customer_number && (
-                          <div className="text-xs text-gray-400 font-mono">
-                            {bill.customer.customer_number}
+                        <TableCell>
+                          <div className="font-medium text-gray-900">
+                            {bill.customer?.name ?? `ID: ${bill.customer_id}`}
                           </div>
-                        )}
-                      </TableCell>
+                          {bill.customer?.customer_number && (
+                            <div className="text-xs text-gray-400 font-mono">
+                              {bill.customer.customer_number}
+                            </div>
+                          )}
+                        </TableCell>
 
-                      <TableCell className="text-center">
-                        {MONTH_NAMES[bill.month] ?? bill.month}
-                      </TableCell>
+                        <TableCell className="text-center">
+                          {MONTH_NAMES[bill.month] ?? bill.month}
+                        </TableCell>
 
-                      <TableCell className="text-center">{bill.year}</TableCell>
+                        <TableCell className="text-center">{bill.year}</TableCell>
 
-                      <TableCell className="font-mono text-sm">{bill.measurement_number}</TableCell>
+                        <TableCell className="font-mono text-sm">{bill.measurement_number}</TableCell>
 
-                      <TableCell className="text-center">{formatNumber(bill.usage_value)} m³</TableCell>
+                        <TableCell className="text-center">{formatNumber(bill.usage_value)} m³</TableCell>
 
-                      <TableCell>
-                        <div className="text-sm font-medium">{bill.service?.name ?? "-"}</div>
-                        {bill.service && (
-                          <div className="text-xs text-gray-400">
-                            {bill.service.min_usage}-{bill.service.max_usage} m³
-                          </div>
-                        )}
-                      </TableCell>
+                        <TableCell>
+                          <div className="text-sm font-medium">{bill.service?.name ?? "-"}</div>
+                          {bill.service && (
+                            <div className="text-xs text-gray-400">
+                              {bill.service.min_usage}-{bill.service.max_usage} m³
+                            </div>
+                          )}
+                        </TableCell>
 
-                      <TableCell className="text-right font-semibold text-green-600">
-                        {formatCurrency(bill.price)}
-                      </TableCell>
+                        <TableCell className="text-right font-semibold text-green-600">
+                          {formatCurrency(bill.price)}
+                        </TableCell>
 
-                      <TableCell className="text-center">
-                        {bill.paid ? (
-                          <Badge className="bg-green-100 text-green-700 border-green-300">Lunas</Badge>
-                        ) : (
-                          <Badge variant="secondary">Belum Bayar</Badge>
-                        )}
-                      </TableCell>
+                        <TableCell className="text-center">
+                          {status === "lunas" && (
+                            <Badge className="bg-green-100 text-green-700 border-green-300">Lunas</Badge>
+                          )}
+                          {status === "pending" && (
+                            <Badge className="bg-yellow-100 text-yellow-700 border-yellow-300">Pending</Badge>
+                          )}
+                          {status === "belum_bayar" && (
+                            <Badge variant="secondary">Belum Bayar</Badge>
+                          )}
+                        </TableCell>
 
                       <TableCell>
                         <div className="flex justify-center gap-2">
@@ -295,8 +357,9 @@ export default async function BillsPage({ searchParams }: Props) {
                           <DeleteBillPage billId={bill.id} />
                         </div>
                       </TableCell>
-                    </TableRow>
-                  ))}
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -305,13 +368,13 @@ export default async function BillsPage({ searchParams }: Props) {
       </Card>
 
       {/* Summary & Pagination */}
-      {count > 0 && (
+      {totalFilteredCount > 0 && (
         <>
           <div className="mt-6 bg-white rounded-xl border shadow-sm p-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
               <div>
-                <p className="text-sm text-gray-600 font-medium">Total Tagihan</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{count}</p>
+                <p className="text-sm text-gray-600 font-medium">Total Sesuai Filter</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">{totalFilteredCount}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600 font-medium">Total Harga (halaman ini)</p>
@@ -325,10 +388,22 @@ export default async function BillsPage({ searchParams }: Props) {
           </div>
 
           <div className="mt-6 flex justify-center">
-            <SimplePagination count={count} perPage={quantity} currentPage={page} />
+            {totalFilteredCount > quantity && (
+              <SimplePagination count={totalFilteredCount} perPage={quantity} currentPage={page} />
+            )}
           </div>
         </>
       )}
     </div>
+  );
+}
+
+export default function BillsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center text-gray-400">Loading...</div>
+    }>
+      <AdminBillsContent />
+    </Suspense>
   );
 }

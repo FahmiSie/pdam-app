@@ -54,7 +54,7 @@ interface Payment {
   };
 }
 
-function getToken() { return Cookies.get("accessToken"); }
+function getToken() { return Cookies.get("adminToken") || Cookies.get("accessToken"); }
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("id-ID", {

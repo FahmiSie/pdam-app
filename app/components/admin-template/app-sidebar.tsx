@@ -20,8 +20,11 @@ import { LogOut } from "lucide-react";
 
 
 
- const handleLogout = () => {
+  const handleLogout = () => {
     Cookies.remove("accessToken");
+    Cookies.remove("adminToken");
+    Cookies.remove("customerToken");
+    Cookies.remove("userRole");
     toast.success("Berhasil logout");
     window.location.href = "/sign-in";
   };

@@ -1,8 +1,8 @@
 "use client";
 
-import { setCookie } from "cookies-next";
+import { setCookie, deleteCookie } from "cookies-next";
 import { useState } from "react";
-import { Eye, EyeOff, Users, Droplets } from "lucide-react";
+import { Eye, EyeOff, Droplets } from "lucide-react";
 import { storeCookie } from "@/lib/client-cookie";
 
 export default function SignInPage() {
@@ -14,6 +14,7 @@ export default function SignInPage() {
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
     setIsLoading(true);
+
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_API_URL}/auth`, {
         method: "POST",
@@ -21,10 +22,7 @@ export default function SignInPage() {
           "Content-Type": "application/json",
           "app-key": `${process.env.NEXT_PUBLIC_APP_KEY}`,
         },
-        body: JSON.stringify({
-          username,
-          password,
-        }),
+        body: JSON.stringify({ username, password }),
       });
 
       const responseData = await response.json();
@@ -35,21 +33,67 @@ export default function SignInPage() {
         return;
       }
 
-      // Set cookie dengan token dari response
-      const token = responseData.token || responseData.data?.token;
-      setCookie("accessToken", token, {
-        maxAge: 60 * 60 * 24, // 1 day
-      });
+      // ✅ Ambil token dan role — cek semua kemungkinan struktur response
+      const token =
+        responseData.data?.token ??
+        responseData.token;
 
-      alert(responseData.message || "Login berhasil!");
-      if (responseData.role === "ADMIN") {
-        window.location.href = "/admin/dashboard";
-      } else if (responseData.role === "CUSTOMER") {
-        window.location.href = "/cust/dashboard";
+      const role = (
+        responseData.data?.role ??
+        responseData.data?.user?.role ??
+        responseData.role
+      );
+
+      if (!token) {
+        alert("Gagal mendapatkan token autentikasi.");
+        console.error("Struktur response:", responseData);
+        return;
       }
+
+      if (!role) {
+        alert("Gagal mendapatkan role pengguna.");
+        console.error("Struktur response:", responseData);
+        return;
+      }
+
+      const upperRole = String(role).toUpperCase();
+      const cookieOptions = { maxAge: 60 * 60 * 24, path: "/" };
+
+      if (upperRole === "ADMIN") {
+        // ✅ Hapus customerToken supaya tidak tumpang tindih
+        deleteCookie("customerToken");
+        // ✅ Simpan adminToken dan userRole
+        setCookie("adminToken", token, cookieOptions);
+        setCookie("userRole", "ADMIN", cookieOptions);
+        // ✅ accessToken diisi token admin (untuk server component getCookie("accessToken"))
+        setCookie("accessToken", token, cookieOptions);
+
+        alert(responseData.message || "Login berhasil sebagai Admin!");
+        window.location.href = "/admin/dashboard";
+
+      } else if (upperRole === "CUSTOMER") {
+        // ✅ Hapus adminToken supaya tidak tumpang tindih
+        deleteCookie("adminToken");
+        // ✅ Simpan customerToken dan userRole
+        setCookie("customerToken", token, cookieOptions);
+        setCookie("userRole", "CUSTOMER", cookieOptions);
+        // ✅ accessToken diisi token customer
+        setCookie("accessToken", token, cookieOptions);
+
+        alert(responseData.message || "Login berhasil sebagai Customer!");
+        window.location.href = "/cust/dashboard";
+
+      } else {
+        alert(`Role tidak dikenali: "${upperRole}"`);
+        console.error("Unknown role:", role, "| Full response:", responseData);
+      }
+
     } catch (error) {
-      console.log("error during sign in:", error);
-      alert("Terjadi kesalahan saat login: " + (error instanceof Error ? error.message : String(error)));
+      console.error("Error during sign in:", error);
+      alert(
+        "Terjadi kesalahan saat login: " +
+        (error instanceof Error ? error.message : String(error))
+      );
     } finally {
       setIsLoading(false);
     }
@@ -59,6 +103,7 @@ export default function SignInPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 flex items-center justify-center">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-3xl shadow-lg p-8">
+
           {/* Header */}
           <div className="text-center mb-8">
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mb-4 shadow-md">
@@ -79,16 +124,15 @@ export default function SignInPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter your username"
+                required
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 transition-all duration-200 hover:bg-white hover:border-gray-300"
               />
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  Password
-                </label>
-              </div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -96,6 +140,7 @@ export default function SignInPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
+                  required
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 transition-all duration-200 hover:bg-white hover:border-gray-300"
                 />
                 <button
@@ -137,6 +182,7 @@ export default function SignInPage() {
               </a>
             </p>
           </div>
+
         </div>
       </div>
     </div>

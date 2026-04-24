@@ -39,7 +39,7 @@ interface Payment {
   };
 }
 
-function getToken() { return Cookies.get("accessToken"); }
+function getToken() { return Cookies.get("customerToken") || Cookies.get("accessToken"); }
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("id-ID", {
@@ -241,7 +241,7 @@ function CustPaymentsContent() {
                         <TableCell className="text-center">
                           {payment.payment_proof ? (
                             <a
-                              href={`${process.env.NEXT_PUBLIC_BASE_API_URL}/payments/proof/${payment.payment_proof}`}
+                              href={`${process.env.NEXT_PUBLIC_BASE_API_URL}/payment-proof/${payment.payment_proof}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-xs text-blue-600 underline hover:text-blue-800"

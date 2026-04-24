@@ -22,7 +22,7 @@ interface CustomerResponse {
 
 async function getCustomerProfile(): Promise<CustomerResponse['data'] | null> {
   try {
-    const token = await getCookie("accessToken");
+    const token = (await getCookie("customerToken")) || (await getCookie("accessToken"));
     const url = `${process.env.NEXT_PUBLIC_BASE_API_URL}/customers/me`;
 
     console.log("Fetching customer profile from:", url);

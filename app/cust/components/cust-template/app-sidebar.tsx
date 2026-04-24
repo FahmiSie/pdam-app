@@ -30,6 +30,9 @@ export function CustSidebar() {
 
   const handleLogout = () => {
     Cookies.remove("accessToken");
+    Cookies.remove("adminToken");
+    Cookies.remove("customerToken");
+    Cookies.remove("userRole");
     toast.success("Berhasil logout");
     router.push("/sign-in");
   };

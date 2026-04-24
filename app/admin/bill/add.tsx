@@ -88,7 +88,7 @@ const AddBill = () => {
     if (!isShowing) return;
     const fetchCustomers = async () => {
       setLoadingCustomers(true);
-      const token = Cookies.get("accessToken");
+      const token = Cookies.get("adminToken") || Cookies.get("accessToken");
       try {
         const res = await fetch(
           `${process.env.NEXT_PUBLIC_BASE_API_URL}/customers?page=1&quantity=999`,
@@ -131,7 +131,7 @@ const AddBill = () => {
     }
 
     setIsLoading(true);
-    const token = Cookies.get("accessToken");
+    const token = Cookies.get("adminToken") || Cookies.get("accessToken");
 
     const payload = {
       customer_id: Number(customerId),

@@ -49,7 +49,7 @@ const MONTH_NAMES = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
-function getToken() { return Cookies.get("accessToken"); }
+function getToken() { return Cookies.get("customerToken") || Cookies.get("accessToken"); }
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("id-ID", {

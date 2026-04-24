@@ -66,7 +66,7 @@ const EditBillPage = ({ bill }: { bill: Bill }) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const token = Cookies.get("accessToken");
+    const token = Cookies.get("adminToken") || Cookies.get("accessToken");
 
     try {
       const response = await fetch(

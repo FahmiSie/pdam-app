@@ -85,7 +85,7 @@ const AddCustomer = () => {
     console.log("Form data:", { name, customerNumber, phone, address, username, password, serviceId });
     
     setIsLoading(true);
-    const token = Cookies.get("accessToken");
+    const token = Cookies.get("adminToken") || Cookies.get("accessToken");
     console.log("Token:", token ? "exists" : "missing");
 
     try {

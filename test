@@ -1,0 +1,21 @@
+"aku.com"
+/// lama
+aku.com/auth/register
+
+{
+    name: Nayval,
+    password:Nauval,
+    email: Nauval@gmail.com,
+}
+201
+
+/// versi sekarang
+
+aku.com/auth/register
+{
+    name: Nayval,
+    password:Nauval,
+    email: Nauval@gmail.com,
+    
+}
+auth : mau makan sekarangj

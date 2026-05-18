@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 interface Root {
   success: boolean;
   message: string;
-  data: Data;
+  data: Data; 
 }
 
 interface Data {
